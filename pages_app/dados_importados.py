@@ -57,25 +57,22 @@ def render():
         col1.metric("Deputados", len(df_deputados))
         col2.metric("Partidos distintos", df_deputados["sigla_partido"].nunique())
 
-        st.caption("Clique no nome de um deputado para visualizar a foto.")
-        df_exibicao = df_deputados[["nome", "sigla_partido", "sigla_uf"]].rename(
-            columns={"nome": "Deputado 📷", "sigla_partido": "sigla_partido", "sigla_uf": "sigla_uf"}
-        )
-        df_exibicao["Deputado 📷"] = df_exibicao["Deputado 📷"] + " 📷"
-        evento = st.dataframe(
-            df_exibicao,
-            width="stretch",
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row",
-            key="tabela_deputados",
-        )
+        st.caption("Clique no ícone para visualizar a foto do deputado.")
 
-        linhas_selecionadas = evento.selection.rows if evento and evento.selection else []
-        if linhas_selecionadas:
-            deputado = df_deputados.iloc[linhas_selecionadas[0]]
-            if st.session_state.get("ultimo_deputado_foto") != deputado["id_deputado"]:
-                st.session_state["ultimo_deputado_foto"] = deputado["id_deputado"]
+        col_widths = [1, 3, 2, 1, 1]
+        cabecalho = st.columns(col_widths)
+        for col, titulo in zip(cabecalho, ["ID", "Nome", "Partido", "UF", "Foto"]):
+            col.markdown(f"**{titulo}**")
+
+        for _, deputado in df_deputados.iterrows():
+            linha = st.columns(col_widths)
+            linha[0].write(deputado["id_deputado"])
+            linha[1].write(deputado["nome"])
+            linha[2].write(deputado["sigla_partido"])
+            linha[3].write(deputado["sigla_uf"])
+            if linha[4].button(
+                "👤", key=f"foto_{deputado['id_deputado']}", help="Ver foto do deputado"
+            ):
                 _abrir_popup_foto(deputado["nome"], deputado["url_foto"])
 
     with tab2:
