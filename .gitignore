@@ -1,0 +1,7 @@
+.venv/
+.claude/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+.env
+Archive.zip
