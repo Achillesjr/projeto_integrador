@@ -1,6 +1,6 @@
 import streamlit as st
 
-from pages_app import projeto, definicoes, codigo, importacao, dados_importados, dashboard
+from pages_app import projeto, definicoes, codigo, importacao, dados_importados, dashboard, ml_analise
 
 st.set_page_config(
     page_title="Gastos Públicos - Câmara dos Deputados",
@@ -15,6 +15,7 @@ PAGINAS = {
     "Importação de Dados": importacao,
     "Dados Importados": dados_importados,
     "Dashboard Informativo": dashboard,
+    "Análise com Machine Learning": ml_analise,
 }
 
 st.sidebar.title("📊 Gastos Públicos")

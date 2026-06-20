@@ -4,6 +4,57 @@ import plotly.express as px
 from core.db import read_sql
 
 
+def _formatar_brl(valor: float) -> str:
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _abrir_popup_analise_fornecedor(nome_fornecedor: str, tipo_despesa: str, df) -> None:
+    @st.dialog(f"Análise: {nome_fornecedor}", width="large")
+    def _dialog():
+        filtro = df[(df["nome_fornecedor"] == nome_fornecedor) & (df["tipo_despesa"] == tipo_despesa)]
+        st.caption(f"Tipo de despesa: {tipo_despesa}")
+
+        col1, col2 = st.columns(2)
+        col1.metric("Deputados que utilizaram", filtro["id_deputado"].nunique())
+        col2.metric("Total Gasto", _formatar_brl(filtro["valor_liquido"].sum()))
+
+        st.markdown("---")
+
+        col_estados, col_utilizadores = st.columns(2)
+        with col_estados:
+            st.markdown("**Estados (UF) envolvidos**")
+            estados = (
+                filtro.groupby("sigla_uf")
+                .agg(valor_liquido=("valor_liquido", "sum"), qtd_deputados=("id_deputado", "nunique"))
+                .sort_values("valor_liquido", ascending=False)
+                .reset_index()
+            )
+            estados["UF"] = estados["sigla_uf"] + " (" + estados["qtd_deputados"].astype(str) + ")"
+            estados["Valor"] = estados["valor_liquido"].apply(_formatar_brl)
+            st.dataframe(estados[["UF", "Valor"]], width="stretch", hide_index=True)
+
+        with col_utilizadores:
+            st.markdown("**Maiores Utilizadores (por Deputado)**")
+            utilizadores = (
+                filtro.groupby(["nome", "sigla_partido"])["valor_liquido"]
+                .sum()
+                .sort_values(ascending=False)
+                .head(10)
+                .reset_index()
+            )
+            utilizadores["Deputado"] = utilizadores["nome"] + " (" + utilizadores["sigla_partido"] + ")"
+            utilizadores["Valor"] = utilizadores["valor_liquido"].apply(_formatar_brl)
+            st.dataframe(utilizadores[["Deputado", "Valor"]], width="stretch", hide_index=True)
+
+        st.markdown("---")
+        st.markdown("**Uso por Mês**")
+        mensal = filtro.groupby("mes")["valor_liquido"].sum().reset_index().sort_values("mes")
+        fig = px.bar(mensal, x="mes", y="valor_liquido", title="Gasto Mensal com este Fornecedor")
+        st.plotly_chart(fig, width="stretch")
+
+    _dialog()
+
+
 def render():
     st.title("Dashboard Informativo")
     st.caption("Indicadores e análises sobre os gastos parlamentares coletados.")
@@ -97,10 +148,29 @@ def render():
 
     st.markdown("### Fornecedores com Maior Concentração de Valores")
     fornecedores = (
-        df.groupby("nome_fornecedor")["valor_liquido"]
+        df.groupby(["nome_fornecedor", "tipo_despesa"])["valor_liquido"]
         .sum()
         .sort_values(ascending=False)
         .head(10)
         .reset_index()
     )
-    st.dataframe(fornecedores, width="stretch")
+    fornecedores["valor_liquido"] = fornecedores["valor_liquido"].apply(_formatar_brl)
+
+    col_widths = [3, 2, 2, 1]
+    cabecalho = st.columns(col_widths)
+    for col, titulo in zip(cabecalho, ["Fornecedor", "Tipo de Despesa", "Valor Líquido", "Análise"]):
+        col.markdown(f"**{titulo}**")
+
+    for _, linha_fornecedor in fornecedores.iterrows():
+        linha = st.columns(col_widths)
+        linha[0].write(linha_fornecedor["nome_fornecedor"])
+        linha[1].write(linha_fornecedor["tipo_despesa"])
+        linha[2].write(linha_fornecedor["valor_liquido"])
+        if linha[3].button(
+            "🔍",
+            key=f"analise_{linha_fornecedor['nome_fornecedor']}_{linha_fornecedor['tipo_despesa']}",
+            help="Ver análise detalhada deste fornecedor",
+        ):
+            _abrir_popup_analise_fornecedor(
+                linha_fornecedor["nome_fornecedor"], linha_fornecedor["tipo_despesa"], df
+            )

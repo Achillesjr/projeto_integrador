@@ -122,6 +122,36 @@ def _grafico_der() -> graphviz.Digraph:
     return g
 
 
+def _grafico_ml() -> graphviz.Digraph:
+    g = graphviz.Digraph()
+    g.attr(rankdir="TB", bgcolor="transparent")
+    g.attr(
+        "node",
+        shape="box",
+        style="filled",
+        fillcolor="#eef2fb",
+        color="#2c3e70",
+        fontname="Helvetica",
+        fontsize="11",
+    )
+    g.attr("edge", color="#2c3e70")
+
+    g.node("base", "Base de Despesas\n(MySQL)")
+    g.node("agrupa", "Agrupamento por\ntipo_despesa")
+    g.node("feature", "Feature: valor_liquido\n(por categoria)")
+    g.node("modelo", "IsolationForest\n(scikit-learn)")
+    g.node("score", "Classificação:\nNormal | Atípica")
+    g.node("saida", "Dashboard de\nAnomalias")
+
+    g.edge("base", "agrupa")
+    g.edge("agrupa", "feature")
+    g.edge("feature", "modelo")
+    g.edge("modelo", "score")
+    g.edge("score", "saida")
+
+    return g
+
+
 def render():
     st.title("Definições do Sistema")
     st.caption("Configuração da API consumida e do banco de dados utilizado pelo pipeline.")
@@ -178,7 +208,7 @@ def render():
     )
 
     st.markdown("## Arquitetura do Pipeline (ETL)")
-    st.graphviz_chart(_grafico_etl(), width="stretch")
+    st.graphviz_chart(_grafico_etl(), width="content")
 
     st.markdown(
         """
@@ -216,7 +246,7 @@ def render():
 
     st.markdown("## Diagrama Entidade-Relacionamento (DER)")
     st.caption("Demonstra como os dados estão ligados no banco de dados.")
-    st.graphviz_chart(_grafico_der(), width="stretch")
+    st.graphviz_chart(_grafico_der(), width="content")
     st.markdown(
         """
         - **Deputado (1) — (N) Despesa**: um parlamentar pode possuir diversas despesas
@@ -224,5 +254,48 @@ def render():
           chave estrangeira, com `ON DELETE CASCADE`);
         - **log_importacao**: tabela de auditoria das execuções do pipeline, sem chave
           estrangeira para as demais tabelas — relação meramente informativa de contexto.
+        """
+    )
+
+    st.markdown("## Machine Learning: Detecção de Despesas Atípicas")
+    st.caption("Componente analítico do projeto, disponível na página 'Análise com Machine Learning'.")
+
+    st.markdown(
+        """
+        Para extrair valor analítico além dos gráficos descritivos do dashboard, o projeto aplica
+        uma técnica de **aprendizado de máquina não supervisionado** sobre os dados de despesas:
+        o algoritmo **Isolation Forest**, da biblioteca `scikit-learn`.
+
+        **Por que Isolation Forest?**
+        - Não exige rótulos manuais de "fraude" ou "irregularidade" — o modelo aprende sozinho
+          o que é um padrão normal de gasto;
+        - É indicado para **detecção de anomalias** em dados tabulares, isolando rapidamente
+          observações raras (outliers) através de partições aleatórias da árvore de decisão;
+        - É leve e rápido o suficiente para ser recalculado a cada interação do usuário no
+          dashboard (mudança de ano ou de sensibilidade), sem necessidade de treinamento prévio
+          persistido em disco.
+
+        **Como é aplicado neste projeto:**
+        1. As despesas do ano selecionado são agrupadas por `tipo_despesa` (ex.: combustível,
+           passagem aérea, divulgação), pois cada categoria possui uma faixa de valores típica
+           muito diferente;
+        2. Para cada grupo com volume suficiente de registros, um modelo `IsolationForest` é
+           treinado usando `valor_liquido` como variável (*feature*);
+        3. O modelo classifica cada despesa como **normal** ou **atípica**, de acordo com o
+           parâmetro de sensibilidade (`contamination`) definido pelo usuário;
+        4. As despesas atípicas são exibidas em destaque — em gráfico de dispersão ao longo do
+           tempo e em tabela ordenada pelo maior valor — para apoiar a verificação de possíveis
+           irregularidades.
+        """
+    )
+
+    st.graphviz_chart(_grafico_ml(), width="content")
+    st.markdown(
+        """
+        - **Entrada**: despesas já tratadas e persistidas no MySQL pelo pipeline ETL;
+        - **Treinamento**: um modelo `IsolationForest` por categoria de despesa, executado em
+          tempo real a cada consulta (sem necessidade de retreinamento manual);
+        - **Saída**: rótulo binário (normal/atípica) consumido diretamente pelos gráficos e
+          tabelas da página de Machine Learning do dashboard.
         """
     )
