@@ -8,8 +8,12 @@ import pandas as pd
 
 
 def _config_value(key: str, default: str) -> str:
-    if "db" in st.secrets and key in st.secrets["db"]:
-        return st.secrets["db"][key]
+    try:
+        secrets_db = st.secrets["db"]
+    except (FileNotFoundError, KeyError, st.errors.StreamlitSecretNotFoundError):
+        secrets_db = {}
+    if key in secrets_db:
+        return secrets_db[key]
     return os.environ.get(f"DB_{key.upper()}", default)
 
 

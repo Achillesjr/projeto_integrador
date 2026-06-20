@@ -58,8 +58,12 @@ def render():
         col2.metric("Partidos distintos", df_deputados["sigla_partido"].nunique())
 
         st.caption("Clique no nome de um deputado para visualizar a foto.")
+        df_exibicao = df_deputados[["nome", "sigla_partido", "sigla_uf"]].rename(
+            columns={"nome": "Deputado 📷", "sigla_partido": "sigla_partido", "sigla_uf": "sigla_uf"}
+        )
+        df_exibicao["Deputado 📷"] = df_exibicao["Deputado 📷"] + " 📷"
         evento = st.dataframe(
-            df_deputados[["id_deputado", "nome", "sigla_partido", "sigla_uf"]],
+            df_exibicao,
             width="stretch",
             hide_index=True,
             on_select="rerun",
