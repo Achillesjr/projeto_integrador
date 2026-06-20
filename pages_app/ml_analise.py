@@ -132,6 +132,19 @@ def render():
     )
 
     if not anomalias.empty:
+        # Interpretação calculada sobre o resultado do modelo (não apenas o gráfico/tabela
+        # crus): aponta em qual categoria e com qual fornecedor as anomalias se concentram.
+        categoria_mais_atipica = anomalias["tipo_despesa"].value_counts().idxmax()
+        fornecedor_mais_atipico = anomalias["nome_fornecedor"].value_counts().idxmax()
+        percentual_atipico = len(anomalias) / len(df_resultado) * 100
+        st.info(
+            f"O modelo classificou {percentual_atipico:.1f}% das despesas de {ano} como atípicas. "
+            f"A categoria **{categoria_mais_atipica}** concentra o maior número de ocorrências, e o "
+            f"fornecedor **{fornecedor_mais_atipico}** aparece com mais frequência entre os lançamentos "
+            "destacados. Isso não significa, necessariamente, irregularidade — apenas que esses valores "
+            "se distanciam do padrão observado dentro da própria categoria, e merecem uma verificação "
+            "mais próxima."
+        )
         fig = px.scatter(
             df_resultado,
             x="data_documento",

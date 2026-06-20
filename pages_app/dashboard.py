@@ -136,8 +136,22 @@ def render():
         fig.update_layout(yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig, width="stretch")
 
+    # Leitura textual dos gráficos acima, calculada a partir do mesmo recorte
+    # exibido (ano selecionado), para que os números não fiquem soltos sem contexto.
+    deputado_top = top10.iloc[0]
+    partido_top = partidos.iloc[0]
+    uf_top = ufs.iloc[0]
+    categoria_top = categorias.iloc[0]
+    st.info(
+        f"No ano de {ano}, **{deputado_top['nome']}** foi o deputado com maior volume de gastos "
+        f"({_formatar_brl(deputado_top['valor_liquido'])}). O partido **{partido_top['sigla_partido']}** "
+        f"concentrou o maior total entre as siglas analisadas, e o estado **{uf_top['sigla_uf']}** lidera "
+        f"em valor acumulado. Entre as categorias de despesa, **{categoria_top['tipo_despesa']}** "
+        f"representa o maior montante, somando {_formatar_brl(categoria_top['valor_liquido'])}."
+    )
+
     st.markdown("### Evolução Mensal")
-    mensal = df.groupby("mes")["valor_liquido"].agg(["sum", "count"]).reset_index()
+    mensal = df.groupby("mes")["valor_liquido"].agg(["sum", "count"]).reset_index().sort_values("mes")
     col5, col6 = st.columns(2)
     with col5:
         fig = px.line(mensal, x="mes", y="sum", markers=True, title="Evolução Mensal dos Gastos (R$)")
@@ -145,6 +159,14 @@ def render():
     with col6:
         fig = px.line(mensal, x="mes", y="count", markers=True, title="Quantidade de Despesas por Mês")
         st.plotly_chart(fig, width="stretch")
+
+    mes_maior_gasto = mensal.loc[mensal["sum"].idxmax()]
+    tendencia = "alta" if mensal["sum"].iloc[-1] >= mensal["sum"].iloc[0] else "queda"
+    st.caption(
+        f"O mês {int(mes_maior_gasto['mes'])} registrou o maior volume de gastos do ano "
+        f"({_formatar_brl(mes_maior_gasto['sum'])}). Comparando o início e o fim do período "
+        f"disponível, a tendência geral de gastos é de {tendencia}."
+    )
 
     st.markdown("### Fornecedores com Maior Concentração de Valores")
     fornecedores = (

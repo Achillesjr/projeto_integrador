@@ -1,5 +1,9 @@
 import pandas as pd
 
+# Etapa "Transform" do pipeline ETL: recebe o JSON bruto retornado pela API
+# (core/coleta.py) e devolve DataFrames já tratados, prontos para persistência
+# (core/load.py).
+
 COLUNAS_DEPUTADOS = ["id", "nome", "siglaPartido", "siglaUf", "urlFoto", "email"]
 COLUNAS_DESPESAS = [
     "id_deputado",
@@ -12,6 +16,8 @@ COLUNAS_DESPESAS = [
 
 
 def tratar_deputados(deputados: list[dict]) -> pd.DataFrame:
+    """Seleciona e renomeia os campos cadastrais de deputados para snake_case,
+    garantindo as colunas mesmo quando a API não as retorna (preenchidas com None)."""
     df = pd.DataFrame(deputados)
     for col in COLUNAS_DEPUTADOS:
         if col not in df.columns:
@@ -31,6 +37,8 @@ def tratar_deputados(deputados: list[dict]) -> pd.DataFrame:
 
 
 def tratar_despesas(despesas: list[dict], ano: int) -> pd.DataFrame:
+    """Padroniza os registros de despesas: renomeia colunas para snake_case,
+    converte data e valor para tipos adequados, deriva o mês e remove duplicidades."""
     if not despesas:
         return pd.DataFrame(
             columns=[

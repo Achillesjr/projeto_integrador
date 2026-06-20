@@ -3,8 +3,13 @@ from sqlalchemy import text
 
 from core.db import get_cached_engine
 
+# Etapa "Load" do pipeline ETL: grava os DataFrames já tratados (core/etl.py)
+# no MySQL e registra uma linha de auditoria para cada execução da coleta.
+
 
 def salvar_deputados(df: pd.DataFrame) -> int:
+    """Insere ou atualiza (upsert) os deputados, evitando duplicidade quando a
+    coleta é executada mais de uma vez para o mesmo ano."""
     if df.empty:
         return 0
     engine = get_cached_engine()
@@ -36,6 +41,8 @@ def salvar_deputados(df: pd.DataFrame) -> int:
 
 
 def salvar_despesas(df: pd.DataFrame, ano: int) -> int:
+    """Substitui as despesas do ano informado (delete + insert), garantindo que
+    reexecuções da coleta não dupliquem registros do mesmo período."""
     engine = get_cached_engine()
     with engine.begin() as conn:
         conn.execute(text("DELETE FROM despesas WHERE ano = :ano"), {"ano": ano})
@@ -45,6 +52,7 @@ def salvar_despesas(df: pd.DataFrame, ano: int) -> int:
 
 
 def registrar_log(ano: int, qtd_deputados: int, qtd_despesas: int, status: str, mensagem: str):
+    """Grava uma linha de auditoria (sucesso ou erro) para cada execução da importação."""
     engine = get_cached_engine()
     with engine.begin() as conn:
         conn.execute(
